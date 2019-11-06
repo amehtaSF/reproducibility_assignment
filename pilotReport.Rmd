@@ -82,8 +82,6 @@ df_raw <- read_excel(here("GroupB_6-7-2014/data/S1_Subway.xlsx"))
 
 Reordering the factor to match the plot in the paper
 ```{r}
-
-
 EAST_STNS <- c("B-Y", "SHER")
 WEST_STNS <- c("STG", "SPAD")
 
@@ -221,7 +219,7 @@ df %>%
 
 # Step 5: Conclusion
 
-I found a significant interaction such that when you are facing towards the target you rate the target as closer than when you are facing away from the target.
+I found a significant interaction such that when you are facing towards the target you rate the target as closer than when you are facing away from the target. Additionally, the post-hoc comparison eta-squareds were equivalent to the original paper.
 
 This reproducibility check was a partial success. I managed to get the same model values despite the paper reporting their ANOVA levels incorrectly and having to determine which ANOVA type they used through trial and error. However, I am not sure why the standard error bars in the plot don't match the ones from their paper. It's possible that they are supposed to be 95% CI bars however the STG station traveling West CI looks slightly low. It is hard to say for sure since the original paper does not include y-axis ticks on their plot.
 
