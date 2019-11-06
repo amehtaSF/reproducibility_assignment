@@ -188,15 +188,14 @@ This is the main model from the study. Using a 2x2 anova, the authors and I foun
 s_direction <- summary(fit_direction <- aov(DISTANCE ~ DIRECTION*STN_NAME, data = df))
 pander((etasqrd <- etaSquared(fit_direction)))
 pander(fit_direction)
-
 ```
+When running this ANOVA, the results match for the most part although the F-value is off by `r 24.1 - s_direction[[1]][2,4]`.
 
-When running this ANOVA, the results match for the most part although the F-value is off by `r 24.1 - s_direction[[1]][2,4]`. 
 
 
 Now I have tried try running the model again using a type 3 ANOVA. This time I get the correct F-value from the paper.
 ```{r}
-fit_final <- car::Anova(lm(DISTANCE ~ DIRECTION * STN_NAME, data=df, 
+fit_final <- car::Anova(lm(DISTANCE ~ DIRECTION * STN_NAME, data=df,
               contrasts=list(DIRECTION=contr.sum, STN_NAME=contr.sum)), type=3)
 
 pander(fit_final)
