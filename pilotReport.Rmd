@@ -13,7 +13,7 @@ articleID <- 6-7-2014 # insert the article ID code here e.g., "10-3-2015"
 reportType <- "pilot" # specify whether this is the 'pilot' report or 'copilot' report
 pilotNames <- "Ashish Mehta" # insert the pilot's name here e.g., "Tom Hardwicke".
 copilotNames <- "Kayla Good" # # insert the co-pilot's name here e.g., "Michael Frank".
-pilotTTC <- 180 # insert the pilot's estimated time to complete (in minutes, it is fine to approximate) e.g., 120
+pilotTTC <- 240 # insert the pilot's estimated time to complete (in minutes, it is fine to approximate) e.g., 120
 copilotTTC <- NA # insert the co-pilot's estimated time to complete (in minutes, it is fine to approximate) e.g., 120
 pilotStartDate <- as.Date("11/01/19", format = "%m/%d/%y") # insert the piloting start date in US format e.g., as.Date("01/25/18", format = "%m/%d/%y")
 copilotStartDate <- NA # insert the co-piloting start date in US format e.g., as.Date("01/25/18", format = "%m/%d/%y")
@@ -162,7 +162,7 @@ df %>%
   theme_minimal()
 ```
 
-Standard error bars were off in the previous plot, so now checking if maybe they're supposed to be 95% CI bars. It almost looks like it could be right, but it's hard to tell since the y-axis in the paper does not have tick marks.
+Standard error bars look too small in the previous plot relative to the plot from the paper (see below), so now checking if maybe they're supposed to be 95% CI bars. 
 ```{r}
 df %>% 
   group_by(DIRECTION, STN_NAME) %>% 
@@ -178,14 +178,18 @@ df %>%
   scale_y_continuous(breaks = seq(0,5,.25)) +
   theme_minimal()
 ```
+These error bars almost looks like they could be right, but it's hard to tell since the y-axis in the paper does not have tick marks.
+
+Here is the original plot from the paper:
+![Figure 1](fig1.png)
 
 ## Inferential statistics
 
 This is the main model from the study. Using a 2x2 anova, the authors and I found the predicted interaction between direction and station. This was confusing because the authors mislabeled the their model terms. In the paper the authors state that they ran a "2 (orientation: toward, away from) × 4 (station: Spadina, St. George, Bloor-Yonge, Sherbourne) analysis of variance (ANOVA) on closeness ratings", when in fact they ran a 2 (direction: east, west) × 4 (station: Spadina, St. George, Bloor-Yonge, Sherbourne) ANOVA on closeness ratings. 
 ```{r}
 s_direction <- summary(fit_direction <- aov(DISTANCE ~ DIRECTION*STN_NAME, data = df))
-pander((etasqrd <- etaSquared(fit_direction)))
 pander(fit_direction)
+pander((etasqrd <- etaSquared(fit_direction)))
 ```
 When running this ANOVA, the results match for the most part although the F-value is off by `r 24.1 - s_direction[[1]][2,4]`.
 
@@ -200,20 +204,89 @@ pander(fit_final)
 ```
 
 
-Here is the ANOVA that they say they ran. The values do not match with the paper.
+Here is the ANOVA that they say they ran (using orientation instead of cardinal direction). The values do not match with the paper.
 ```{r}
-summary(fit_orientation <- aov(DISTANCE ~ ORIENTATION*STN_NAME, data = df))
+fit_orientation <- aov(DISTANCE ~ ORIENTATION*STN_NAME, data = df)
 pander(etaSquared(fit_orientation))
 pander(fit_orientation)
 ```
 
 
-Here are the post-hoc pairwise comparisons for each station
+Here are the pairwise comparisons for each station:
 ```{r}
-df %>% 
+pairwise <- df %>% 
   split(.$STN_NAME) %>% 
   map(~ aov(DISTANCE ~ DIRECTION, data = .)) %>% 
   map(~ list(summary(.), etaSquared(.))) 
+
+pairwise %>% 
+  map(~ kable(.[[1]][[1]]))
+
+pairwise %>% 
+  map(~ kable(.[[2]]))
+
+```
+
+## Updating reportObject
+
+
+Main ANOVA: main effect of station
+```{r}
+# DF numerator
+reportObject <- reproCheck("3", fit_final$Df[3], "df")
+
+# DF denominator
+reportObject <- reproCheck("194", fit_final$Df[5], "df")
+
+# F value
+reportObject <- reproCheck("24.10", fit_final$`F value`[3], "F")
+
+# P value
+reportObject <- reproCheck("<.001", fit_final$`Pr(>F)`[3], "p", eyeballCheck = T)
+
+# Eta squared
+reportObject <- reproCheck(".27", etasqrd[2,2], "other")
+```
+
+Main ANOVA: interaction direction and station
+```{r}
+# DF numerator
+reportObject <- reproCheck("3", fit_final$Df[4], "df")
+
+# DF denominator
+reportObject <- reproCheck("194", fit_final$Df[5], "df")
+
+# F value
+reportObject <- reproCheck("16.28", fit_final$`F value`[4], "F")
+
+# P value
+reportObject <- reproCheck("<.001", fit_final$`Pr(>F)`[4], "p", eyeballCheck = T)
+
+# Eta squared
+reportObject <- reproCheck(".20", etasqrd[3,2], "other")
+```
+
+Pairwise comparisons
+```{r}
+# P value west 1 stop (stg)
+reportObject <- reproCheck("<.001", pairwise$STG[[1]][[1]]$`Pr(>F)`[1], "p", T)
+# eta squared west 1 stop (stg)
+reportObject <- reproCheck(".28", pairwise$STG[[2]][2], "other")
+
+# P value west 2 stops (spad)
+reportObject <- reproCheck(".001", pairwise$SPAD[[1]][[1]]$`Pr(>F)`[1], "p")
+# eta squared west 2 stops (spad)
+reportObject <- reproCheck(".20", pairwise$SPAD[[2]][2], "other")
+
+# P value east 1 stop (b-y)
+reportObject <- reproCheck(".053", pairwise$`B-Y`[[1]][[1]]$`Pr(>F)`[1], "p")
+# eta squared east 1 stop(b-y)
+reportObject <- reproCheck(".08", pairwise$`B-Y`[[2]][2], "other")
+
+# P value east 2 stops (sher)
+reportObject <- reproCheck("<.001", pairwise$SHER[[1]][[1]]$`Pr(>F)`[1], "p", T)
+# eta squared east 2 stops (sher)
+reportObject <- reproCheck(".24", pairwise$SHER[[2]][2], "other")
 
 ```
 
@@ -221,7 +294,7 @@ df %>%
 
 I found a significant interaction such that when you are facing towards the target you rate the target as closer than when you are facing away from the target. Additionally, the post-hoc comparison eta-squareds were equivalent to the original paper.
 
-This reproducibility check was a partial success. I managed to get the same model values despite the paper reporting their ANOVA levels incorrectly and having to determine which ANOVA type they used through trial and error. However, I am not sure why the standard error bars in the plot don't match the ones from their paper. It's possible that they are supposed to be 95% CI bars however the STG station traveling West CI looks slightly low. It is hard to say for sure since the original paper does not include y-axis ticks on their plot.
+This reproducibility check was a partial success. I managed to get the same model values despite the paper reporting their ANOVA levels incorrectly and the fact that I had to determine which ANOVA type they used through trial and error. However, I am not sure why the standard error bars in the plot don't match the ones from their paper. It's possible that they are supposed to be 95% CI bars, however the STG station traveling West CI looks slightly small It is hard to say for sure since the original paper does not include y-axis ticks on their plot.
 
 
 
